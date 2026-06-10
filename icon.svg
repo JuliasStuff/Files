@@ -23,29 +23,35 @@
   <!-- App background -->
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
 
-  <!-- Folder, centered and sized to fit the maskable safe zone -->
-  <g filter="url(#softShadow)" transform="translate(95 137) scale(0.875)">
-    <!-- Back flap (tab) -->
-    <path
-      d="M16 24
-         q0-16 16-16
-         h104
-         q10 0 17 7
-         l24 24
-         h167
-         q16 0 16 16
-         v34
-         H16
-         z"
-      fill="url(#folderBack)"/>
-
-    <!-- Front pocket -->
+  <!-- Folder, centered. Back and front share identical L/R edges (x=8 to x=352). -->
+  <g filter="url(#softShadow)" transform="translate(80 124) scale(1)">
+    <!-- Back flap: full-width body with a symmetric centered tab on top.
+         Tab is centered at x=180 (folder midpoint = (8+352)/2). -->
     <path
       d="M8 76
          q0-16 16-16
+         h104
+         q10 0 14-8
+         l8-12
+         q4-4 12-4
+         h36
+         q8 0 12 4
+         l8 12
+         q4 8 14 8
+         h104
+         q16 0 16 16
+         v44
+         H8
+         z"
+      fill="url(#folderBack)"/>
+
+    <!-- Front pocket: identical left/right edges to the back -->
+    <path
+      d="M8 96
+         q0-16 16-16
          h312
          q16 0 16 16
-         v172
+         v152
          q0 16-16 16
          H24
          q-16 0-16-16
@@ -54,7 +60,7 @@
 
     <!-- Subtle highlight along the top edge of the front pocket -->
     <path
-      d="M8 78
+      d="M8 98
          q0-14 16-14
          h312
          q16 0 16 14"
