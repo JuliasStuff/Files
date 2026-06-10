@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1f6feb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Files">
+  <title>Files</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Files</h1>
+    <button id="add" class="icon-btn" aria-label="Add file">
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+        <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/>
+      </svg>
+    </button>
+  </header>
+
+  <main>
+    <div id="grid" class="grid" aria-live="polite"></div>
+    <p id="empty" class="empty hidden">
+      No files yet.<br>
+      Tap <span class="inline-plus" aria-hidden="true">+</span> to add a JPG or PDF.
+    </p>
+  </main>
+
+  <input id="picker" type="file" accept="image/jpeg,image/jpg,application/pdf" multiple hidden>
+
+  <!-- Fullscreen viewer -->
+  <div id="viewer" class="viewer hidden" role="dialog" aria-modal="true" aria-label="File viewer">
+    <button id="viewer-close" class="viewer-btn close" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+        <path fill="currentColor" d="M18.3 5.71 12 12.01l-6.29-6.3-1.42 1.42L10.59 13.43l-6.3 6.29 1.42 1.42L12 14.84l6.29 6.3 1.42-1.42-6.3-6.29 6.3-6.29z"/>
+      </svg>
+    </button>
+    <button id="viewer-delete" class="viewer-btn delete" aria-label="Delete file">
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+        <path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/>
+      </svg>
+    </button>
+    <div id="viewer-body" class="viewer-body"></div>
+    <div id="viewer-name" class="viewer-name"></div>
+  </div>
+
+  <!-- Lightweight confirm dialog -->
+  <div id="confirm" class="confirm hidden" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
+    <div class="confirm-box">
+      <div id="confirm-msg" class="confirm-msg">Delete this file?</div>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" class="btn">Cancel</button>
+        <button id="confirm-ok" class="btn danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>
