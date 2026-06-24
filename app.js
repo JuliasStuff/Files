@@ -358,7 +358,10 @@ function applyViewerRotation(deg, force = false) {
   const quarter = deg === 90 || deg === 270;
   rotator.style.width  = (quarter ? h : w) + 'px';
   rotator.style.height = (quarter ? w : h) + 'px';
-  rotator.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+  // `deg` is how far the device is rotated relative to the screen; the
+  // CSS rotation needs the opposite sign to *undo* that tilt and keep the
+  // content upright relative to gravity.
+  rotator.style.transform = `translate(-50%, -50%) rotate(${-deg}deg)`;
 }
 
 viewerClose.addEventListener('click', closeViewer);
