@@ -78,6 +78,8 @@ const viewerBody = document.getElementById('viewer-body');
 const viewerName = document.getElementById('viewer-name');
 const viewerClose  = document.getElementById('viewer-close');
 const viewerDelete = document.getElementById('viewer-delete');
+const viewerRotateCcw = document.getElementById('viewer-rotate-ccw');
+const viewerRotateCw  = document.getElementById('viewer-rotate-cw');
 const confirmEl  = document.getElementById('confirm');
 const confirmMsg = document.getElementById('confirm-msg');
 const confirmOk  = document.getElementById('confirm-ok');
@@ -260,12 +262,11 @@ function openViewer(id) {
   viewerName.textContent = file.name;
   viewer.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  startOrientationTracking();
-  applyViewerRotation(currentRotation, true);
+  currentRotation = 0;
+  applyViewerRotation(0, true);
 }
 
 function closeViewer() {
-  stopOrientationTracking();
   viewer.classList.add('hidden');
   viewerBody.innerHTML = '';
   releaseViewerUrl();
@@ -281,73 +282,13 @@ function releaseViewerUrl() {
   }
 }
 
-// ─── Viewer rotation (phone tilt) ────────────────────────
-// Tracks the physical orientation of the device and rotates the viewer
-// content to match — handy when the OS has rotation lock enabled, so the
-// page itself stays portrait but the image/PDF still appears upright.
+// ─── Viewer rotation (manual buttons) ────────────────────
+// Two toolbar buttons rotate the displayed content by 90° in either
+// direction. Predictable on any device regardless of rotation-lock state.
 let currentRotation = 0;          // applied rotation in degrees (0/90/180/270)
-let orientationHandler = null;
-let orientationResizeHandler = null;
-
-function startOrientationTracking() {
-  if (!('DeviceOrientationEvent' in window)) return;
-  if (orientationHandler) return;
-
-  orientationHandler = (e) => {
-    if (e.beta == null || e.gamma == null) return;
-    const target = deviceAngleFromTilt(e.beta, e.gamma);
-    if (target == null) return;
-    const screenAngle = (screen.orientation && screen.orientation.angle) || 0;
-    const rot = ((target - screenAngle) % 360 + 360) % 360;
-    applyViewerRotation(rot);
-  };
-  window.addEventListener('deviceorientation', orientationHandler);
-
-  // Re-apply on viewport changes so the rotator's pre-rotation box still
-  // matches the viewer body's current dimensions.
-  orientationResizeHandler = () => applyViewerRotation(currentRotation, true);
-  window.addEventListener('resize', orientationResizeHandler);
-  if (screen.orientation && screen.orientation.addEventListener) {
-    screen.orientation.addEventListener('change', orientationResizeHandler);
-  }
-}
-
-function stopOrientationTracking() {
-  if (orientationHandler) {
-    window.removeEventListener('deviceorientation', orientationHandler);
-    orientationHandler = null;
-  }
-  if (orientationResizeHandler) {
-    window.removeEventListener('resize', orientationResizeHandler);
-    if (screen.orientation && screen.orientation.removeEventListener) {
-      screen.orientation.removeEventListener('change', orientationResizeHandler);
-    }
-    orientationResizeHandler = null;
-  }
-}
-
-// Map device tilt (beta = front/back, gamma = left/right) to a snapped
-// 0/90/180/270 angle, with hysteresis so we don't flicker between
-// orientations at the boundaries.
-function deviceAngleFromTilt(beta, gamma) {
-  const inBand = (v, target, half) => Math.abs(v - target) <= half;
-  const current = currentRotation;
-  // Use a wider band to stay in the current orientation, narrower to flip.
-  const keep = 55, flip = 45;
-  const candidates = [
-    { angle:   0, ok: gamma >  -keep && gamma <  keep && beta >  20 },
-    { angle:  90, ok: gamma >   flip },
-    { angle: 270, ok: gamma <  -flip },
-    { angle: 180, ok: gamma >  -keep && gamma <  keep && beta < -20 },
-  ];
-  // Prefer the current rotation if it's still valid.
-  const sticky = candidates.find(c => c.angle === current && c.ok);
-  if (sticky) return sticky.angle;
-  const next = candidates.find(c => c.ok);
-  return next ? next.angle : null;
-}
 
 function applyViewerRotation(deg, force = false) {
+  deg = ((deg % 360) + 360) % 360;
   if (!force && deg === currentRotation) return;
   const rotator = viewerBody.querySelector('.viewer-rotator');
   if (!rotator) { currentRotation = deg; return; }
@@ -358,11 +299,21 @@ function applyViewerRotation(deg, force = false) {
   const quarter = deg === 90 || deg === 270;
   rotator.style.width  = (quarter ? h : w) + 'px';
   rotator.style.height = (quarter ? w : h) + 'px';
-  // `deg` is how far the device is rotated relative to the screen; the
-  // CSS rotation needs the opposite sign to *undo* that tilt and keep the
-  // content upright relative to gravity.
-  rotator.style.transform = `translate(-50%, -50%) rotate(${-deg}deg)`;
+  rotator.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
 }
+
+viewerRotateCcw.addEventListener('click', () => {
+  applyViewerRotation(currentRotation - 90);
+});
+viewerRotateCw.addEventListener('click', () => {
+  applyViewerRotation(currentRotation + 90);
+});
+
+window.addEventListener('resize', () => {
+  if (!viewer.classList.contains('hidden')) {
+    applyViewerRotation(currentRotation, true);
+  }
+});
 
 viewerClose.addEventListener('click', closeViewer);
 viewerDelete.addEventListener('click', () => {
