@@ -16,12 +16,43 @@
 <body>
   <header class="topbar">
     <h1>Files</h1>
-    <button id="add" class="icon-btn" aria-label="Add file">
-      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-        <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/>
-      </svg>
-    </button>
+    <div class="topbar-actions">
+      <button id="sync-status" class="icon-btn sync-status" aria-label="Sync settings" title="Sync settings">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path fill="currentColor" d="M19.35 10.04A7.49 7.49 0 0 0 12 4c-2.83 0-5.27 1.6-6.5 3.95A5.99 5.99 0 0 0 6 20h13a5 5 0 0 0 .35-9.96M19 18H6a4 4 0 0 1-.46-7.97l1.33-.15.62-1.18A5.5 5.5 0 0 1 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11A3 3 0 0 1 22 15c0 1.65-1.35 3-3 3"/>
+        </svg>
+        <span id="sync-dot" class="sync-dot" aria-hidden="true"></span>
+      </button>
+      <button id="trash" class="icon-btn" aria-label="Trash" title="Trash">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/>
+        </svg>
+      </button>
+      <button id="restore" class="icon-btn" aria-label="Restore from backup" title="Restore from backup">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+          <path fill="currentColor" d="M12 5V2L7 6l5 4V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+        </svg>
+      </button>
+      <button id="backup" class="icon-btn" aria-label="Back up all files" title="Back up all files">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+          <path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z"/>
+        </svg>
+      </button>
+      <button id="add" class="icon-btn" aria-label="Add file">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+          <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/>
+        </svg>
+      </button>
+    </div>
   </header>
+
+  <div id="storage-banner" class="storage-banner hidden" role="status">
+    <span class="storage-banner-text">
+      Your files may be cleared by the browser if storage runs low.
+    </span>
+    <button id="storage-banner-action" class="storage-banner-btn">Make permanent</button>
+    <button id="storage-banner-dismiss" class="storage-banner-dismiss" aria-label="Dismiss">×</button>
+  </div>
 
   <main>
     <div id="grid" class="grid" aria-live="polite"></div>
@@ -32,6 +63,7 @@
   </main>
 
   <input id="picker" type="file" accept="image/jpeg,image/jpg,image/png,application/pdf" multiple hidden>
+  <input id="restore-picker" type="file" accept=".zip,application/zip" hidden>
 
   <!-- Fullscreen viewer -->
   <div id="viewer" class="viewer hidden" role="dialog" aria-modal="true" aria-label="File viewer">
@@ -70,7 +102,131 @@
     </div>
   </div>
 
-  <script src="app.js" defer></script>
+  <!-- Sync settings sheet -->
+  <div id="sync-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="sync-title">
+    <div class="sheet-box">
+      <header class="sheet-header">
+        <h2 id="sync-title">Sync</h2>
+        <button id="sync-close" class="icon-btn dark" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path fill="currentColor" d="M18.3 5.71 12 12.01l-6.29-6.3-1.42 1.42L10.59 13.43l-6.3 6.29 1.42 1.42L12 14.84l6.29 6.3 1.42-1.42-6.3-6.29 6.3-6.29z"/>
+          </svg>
+        </button>
+      </header>
+
+      <div id="sync-status-line" class="sync-status-line">Not configured</div>
+
+      <!-- Setup step: paste Firebase config -->
+      <section id="sync-setup" class="sync-section">
+        <h3>1. Paste your Firebase config</h3>
+        <p class="muted">
+          Create a free Firebase project at
+          <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">console.firebase.google.com</a>,
+          enable <b>Firestore</b> and <b>Storage</b>,
+          then copy the web app config object and paste it below.
+        </p>
+        <textarea id="sync-config" rows="8" spellcheck="false" placeholder='{
+  "apiKey": "...",
+  "authDomain": "....firebaseapp.com",
+  "projectId": "...",
+  "storageBucket": "....appspot.com",
+  "appId": "..."
+}'></textarea>
+        <details class="sync-rules">
+          <summary>Security rules to paste in Firebase console (required)</summary>
+          <p class="muted">
+            This app uses a long random "vault key" instead of sign-in.
+            The rules below allow read/write to any vault whose key is at least
+            24 characters long — your key is 32 — so guessing one is infeasible.
+            <b>Anyone who learns both your Firebase project + vault key can read your files</b>,
+            so treat the vault key like a password.
+          </p>
+          <p class="muted">Firestore → Rules:</p>
+<pre>rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /vaults/{vault}/{document=**} {
+      allow read, write: if vault.size() &gt;= 24;
+    }
+  }
+}</pre>
+          <p class="muted">Storage → Rules:</p>
+<pre>rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /vaults/{vault}/{allPaths=**} {
+      allow read, write: if vault.size() &gt;= 24;
+    }
+  }
+}</pre>
+        </details>
+        <div class="sync-actions">
+          <button id="sync-save-config" class="btn primary">Save config</button>
+        </div>
+      </section>
+
+      <!-- Vault key step -->
+      <section id="sync-auth" class="sync-section hidden">
+        <h3>2. Vault key</h3>
+        <p class="muted">
+          A random secret that ties your devices together. The app generated one
+          for you — copy it now and paste it into the other device's settings.
+        </p>
+        <label class="field">
+          <span>Vault key</span>
+          <input id="sync-vault-key" type="text" spellcheck="false" autocapitalize="off" autocomplete="off">
+        </label>
+        <div class="sync-actions">
+          <button id="sync-vault-copy" class="btn">Copy</button>
+          <button id="sync-vault-regen" class="btn">Generate new</button>
+          <button id="sync-vault-save" class="btn primary">Use this key</button>
+        </div>
+        <div id="sync-auth-error" class="sync-error hidden"></div>
+        <div class="sync-actions sync-actions-secondary">
+          <button id="sync-clear-config" class="btn link">Use a different Firebase project</button>
+        </div>
+      </section>
+
+      <!-- Linked state -->
+      <section id="sync-active" class="sync-section hidden">
+        <h3>Linked</h3>
+        <p class="muted">This device is syncing with your vault.</p>
+        <label class="field">
+          <span>Current vault key</span>
+          <input id="sync-active-key" type="text" readonly spellcheck="false">
+        </label>
+        <div class="sync-actions">
+          <button id="sync-active-copy" class="btn">Copy key</button>
+          <button id="sync-signout" class="btn">Unlink this device</button>
+        </div>
+        <div class="sync-actions sync-actions-secondary">
+          <button id="sync-clear-config-2" class="btn link">Use a different Firebase project</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Trash sheet -->
+  <div id="trash-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="trash-title">
+    <div class="sheet-box">
+      <header class="sheet-header">
+        <h2 id="trash-title">Trash</h2>
+        <button id="trash-close" class="icon-btn dark" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path fill="currentColor" d="M18.3 5.71 12 12.01l-6.29-6.3-1.42 1.42L10.59 13.43l-6.3 6.29 1.42 1.42L12 14.84l6.29 6.3 1.42-1.42-6.3-6.29 6.3-6.29z"/>
+          </svg>
+        </button>
+      </header>
+      <p class="muted trash-note">Deleted files are kept here. Restore to bring them back, or empty trash to delete permanently from every device.</p>
+      <div class="trash-actions">
+        <button id="trash-empty" class="btn danger">Empty trash</button>
+      </div>
+      <div id="trash-list" class="trash-list"></div>
+      <p id="trash-empty-msg" class="empty hidden">Trash is empty.</p>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

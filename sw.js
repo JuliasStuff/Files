@@ -1,10 +1,11 @@
 // Minimal service worker — caches the app shell + PDF.js for offline use.
-const CACHE = 'files-app-v5';
+const CACHE = 'files-app-v7';
 const SHELL = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './sync.js',
   './manifest.json',
   './icon.png',
 ];
