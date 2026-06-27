@@ -1,236 +1,1405 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#1f6feb">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Files">
-  <title>Files</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon.png">
-  <link rel="icon" type="image/png" href="icon.png">
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Files</title>
+<meta name="theme-color" content="#c98a4b" />
+<meta name="description" content="Personal stash of files, photos, and PDFs — synced across devices." />
+
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Files" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="application-name" content="Files" />
+
+<style>
+  :root{
+    --bg:#f6f3ec;
+    --panel:#ffffff;
+    --panel-2:#efe9dc;
+    --ink:#2a2a2a;
+    --ink-soft:#6b6357;
+    --line:#cdc3ad;
+    --accent:#c98a4b;
+    --accent-2:#a16d34;
+    --accent-soft:#f5e3cf;
+    --danger:#a63446;
+    --danger-soft:#f3d5d9;
+    --warning:#d4a13a;
+    --shadow:0 4px 14px rgba(60,40,20,.10);
+    --shadow-lg:0 12px 36px rgba(60,40,20,.18);
+    --radius:14px;
+    --radius-sm:10px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; min-height:100%;
+    background:
+      radial-gradient(900px 500px at 90% -10%, rgba(201,138,75,.18), transparent 60%),
+      radial-gradient(700px 400px at -10% 110%, rgba(91,138,114,.14), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{
+    font-family:inherit; cursor:pointer;
+    background:var(--panel); color:var(--ink);
+    border:1px solid var(--line); border-radius:10px;
+    padding:8px 14px; font-size:14px;
+    transition:background .15s, border-color .15s, transform .05s;
+  }
+  button:hover{ background:var(--panel-2); }
+  button:active{ transform:translateY(1px); }
+  button.primary{
+    background:var(--accent); color:#fff; border-color:var(--accent-2);
+  }
+  button.primary:hover{ background:var(--accent-2); }
+  button.danger{
+    background:var(--danger); color:#fff; border-color:var(--danger);
+  }
+  button.danger:hover{ background:#8a2839; }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .app{ max-width:1400px; margin:0 auto; padding:14px 14px 80px; }
+
+  .topbar{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 4px 14px;
+  }
+  .topbar h1{
+    font-size:22px; margin:0; font-weight:600; letter-spacing:.2px;
+    color:var(--ink);
+  }
+  .topbar .spacer{ flex:1; }
+  .topbar-actions{ display:flex; gap:8px; align-items:center; }
+  .icon-btn{
+    width:38px; height:38px; padding:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:18px; line-height:1;
+  }
+  .icon-btn.primary{ font-size:22px; }
+
+  .sync-dot{
+    width:10px; height:10px; border-radius:50%;
+    background:#bbb; display:inline-block;
+    box-shadow:0 0 0 2px rgba(255,255,255,.6);
+    transition:background .25s;
+  }
+  .sync-dot.off       { background:#bbb; }
+  .sync-dot.connecting{ background:var(--warning); animation:pulse 1.2s infinite; }
+  .sync-dot.connected { background:#5b8a72; }
+  .sync-dot.error     { background:var(--danger); }
+  @keyframes pulse{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%    { opacity:.55; transform:scale(.85); }
+  }
+  #sync-status-wrap{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 10px; background:var(--panel); border:1px solid var(--line);
+    border-radius:999px; font-size:12px; color:var(--ink-soft);
+    cursor:pointer;
+  }
+  #sync-status-wrap:hover{ background:var(--panel-2); }
+
+  .banner{
+    margin:0 0 12px; padding:10px 14px;
+    background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--warning);
+    border-radius:var(--radius-sm);
+    font-size:13px; color:var(--ink-soft);
+    display:none;
+  }
+  .banner.show{ display:flex; align-items:center; gap:10px; }
+  .banner.error{ border-left-color:var(--danger); }
+  .banner.info{ border-left-color:var(--accent); }
+  .banner .spacer{ flex:1; }
+  .banner button{ padding:4px 10px; font-size:12px; }
+
+  #ro-banner{
+    background:#fff8e6; border-left-color:var(--warning);
+    color:#6b5520;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:12px;
+  }
+  @media(min-width:680px){ .grid{ grid-template-columns:repeat(3, 1fr); } }
+  @media(min-width:980px){ .grid{ grid-template-columns:repeat(4, 1fr); } }
+  @media(min-width:1280px){ .grid{ grid-template-columns:repeat(5, 1fr); } }
+
+  .tile{
+    position:relative;
+    aspect-ratio:1/1;
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+    transition:transform .12s, box-shadow .12s, border-color .12s;
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+  .tile:hover{
+    transform:translateY(-2px);
+    box-shadow:var(--shadow-lg);
+    border-color:var(--accent);
+  }
+  .tile.dragging{
+    opacity:.55;
+    transform:scale(.96);
+    box-shadow:var(--shadow-lg);
+  }
+  .tile.drag-over{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  .tile .thumb{
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--panel-2);
+    overflow:hidden;
+  }
+  .tile .thumb img,
+  .tile .thumb canvas{
+    width:100%; height:100%; object-fit:cover;
+    display:block;
+  }
+  .tile .placeholder{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px; padding:12px; text-align:center;
+    color:var(--ink-soft); font-size:13px;
+  }
+  .tile .placeholder .ic{ font-size:36px; opacity:.7; }
+  .tile .label{
+    position:absolute; left:0; right:0; bottom:0;
+    background:linear-gradient(transparent, rgba(0,0,0,.55));
+    color:#fff; font-size:11px;
+    padding:18px 8px 6px;
+    text-overflow:ellipsis; overflow:hidden; white-space:nowrap;
+  }
+  .tile .badge{
+    position:absolute; top:6px; left:6px;
+    background:rgba(0,0,0,.55); color:#fff;
+    font-size:10px; padding:2px 6px; border-radius:6px;
+    text-transform:uppercase; letter-spacing:.5px;
+  }
+  .tile .sync-mini{
+    position:absolute; top:6px; right:6px;
+    width:8px; height:8px; border-radius:50%;
+    box-shadow:0 0 0 2px rgba(0,0,0,.25);
+  }
+  .tile .sync-mini.pending{ background:var(--warning); }
+  .tile .sync-mini.synced{ background:#5b8a72; opacity:.0; }
+  .tile .sync-mini.error{ background:var(--danger); }
+
+  .empty-state{
+    text-align:center; padding:60px 20px;
+    color:var(--ink-soft);
+  }
+  .empty-state .big{ font-size:64px; opacity:.4; margin-bottom:8px; }
+  .empty-state .title{ font-size:18px; color:var(--ink); margin-bottom:4px; }
+
+  dialog{
+    border:none; padding:0; background:transparent;
+    max-width:none; max-height:none;
+    overflow:visible;
+  }
+  dialog:not([open]){ display:none !important; }
+  dialog::backdrop{
+    background:rgba(20,15,8,.72);
+    backdrop-filter:blur(2px);
+  }
+
+  .viewer{
+    position:fixed; inset:0;
+    width:100%; height:100%; margin:0;
+    background:#1a1814;
+    display:flex; flex-direction:column;
+  }
+  .viewer-bar{
+    display:flex; align-items:center; gap:8px;
+    padding:10px 12px;
+    background:rgba(0,0,0,.4);
+    color:#fff;
+  }
+  .viewer-bar .name{
+    flex:1; font-size:14px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .viewer-bar button{
+    background:rgba(255,255,255,.1); color:#fff; border-color:rgba(255,255,255,.2);
+  }
+  .viewer-bar button:hover{ background:rgba(255,255,255,.2); }
+  .viewer-bar button.danger{
+    background:var(--danger); border-color:var(--danger);
+  }
+  .viewer-stage{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    overflow:auto; padding:14px;
+  }
+  .viewer-stage img,
+  .viewer-stage iframe{
+    max-width:100%; max-height:100%;
+    background:#fff; border-radius:6px;
+    box-shadow:0 10px 40px rgba(0,0,0,.4);
+    transition:transform .2s;
+  }
+  .viewer-stage iframe{
+    width:100%; height:100%; border:none;
+    background:#fff;
+  }
+
+  .sheet{
+    width:100vw; max-width:520px; max-height:90vh;
+    margin:auto;
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:18px;
+    box-shadow:var(--shadow-lg);
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .sheet-head{
+    display:flex; align-items:center; gap:10px;
+    padding:14px 16px;
+    border-bottom:1px solid var(--line);
+    background:var(--panel-2);
+  }
+  .sheet-head h2{ font-size:17px; margin:0; flex:1; font-weight:600; }
+  .sheet-body{
+    flex:1; overflow:auto; padding:16px;
+  }
+  .sheet-foot{
+    display:flex; gap:8px; justify-content:flex-end;
+    padding:12px 16px; border-top:1px solid var(--line);
+    background:var(--panel-2);
+  }
+
+  .confirm{
+    width:min(420px, 92vw); margin:auto;
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:20px;
+    box-shadow:var(--shadow-lg);
+  }
+  .confirm h3{ margin:0 0 8px; font-size:17px; }
+  .confirm p{ margin:0 0 16px; color:var(--ink-soft); font-size:14px; }
+  .confirm .row{ display:flex; gap:8px; justify-content:flex-end; }
+
+  .trash-row{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    margin-bottom:8px;
+    background:var(--panel);
+  }
+  .trash-row .thumb-mini{
+    width:48px; height:48px; flex-shrink:0;
+    border-radius:8px; overflow:hidden;
+    background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; color:var(--ink-soft);
+  }
+  .trash-row .thumb-mini img{ width:100%; height:100%; object-fit:cover; }
+  .trash-row .info{ flex:1; min-width:0; }
+  .trash-row .info .name{
+    font-size:13px; font-weight:500;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .trash-row .info .meta{ font-size:11px; color:var(--ink-soft); }
+  .trash-row .actions{ display:flex; gap:4px; flex-shrink:0; }
+  .trash-row button{ padding:4px 8px; font-size:12px; }
+
+  .lock-screen{
+    position:fixed; inset:0; z-index:9999;
+    background:linear-gradient(135deg,#f6f3ec 0%,var(--accent-soft) 100%);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .lock-screen[hidden]{ display:none; }
+  .lock-card{
+    width:100%; max-width:380px;
+    background:#fff; border:1px solid var(--line); border-radius:18px;
+    padding:28px 24px; box-shadow:var(--shadow-lg);
+    text-align:center;
+  }
+  .lock-card h2{ margin:0 0 6px; font-size:20px; }
+  .lock-card p{ margin:0 0 16px; color:var(--ink-soft); font-size:13px; }
+  .lock-card input{
+    width:100%; padding:10px 12px; font-size:15px;
+    border:1px solid var(--line); border-radius:10px;
+    margin-bottom:10px; font-family:inherit;
+  }
+  .lock-card .err{ color:var(--danger); font-size:12px; min-height:16px; }
+  body.ro-mode .ro-hide{ display:none !important; }
+</style>
 </head>
 <body>
-  <header class="topbar">
+
+<div id="lock-screen" class="lock-screen" hidden>
+  <div class="lock-card">
+    <h2>Files</h2>
+    <p>Enter passcode to continue</p>
+    <input id="lock-input" type="password" autocomplete="off" inputmode="text" />
+    <div class="err" id="lock-err">&nbsp;</div>
+    <button class="primary" id="lock-unlock" style="width:100%;">Unlock</button>
+    <button id="lock-readonly" style="width:100%; margin-top:6px; background:transparent; border:none; color:var(--ink-soft); font-size:12px;">View in read-only mode</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="topbar">
     <h1>Files</h1>
+    <div class="spacer"></div>
     <div class="topbar-actions">
-      <button id="sync-status" class="icon-btn sync-status" aria-label="Sync settings" title="Sync settings">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-          <path fill="currentColor" d="M19.35 10.04A7.49 7.49 0 0 0 12 4c-2.83 0-5.27 1.6-6.5 3.95A5.99 5.99 0 0 0 6 20h13a5 5 0 0 0 .35-9.96M19 18H6a4 4 0 0 1-.46-7.97l1.33-.15.62-1.18A5.5 5.5 0 0 1 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11A3 3 0 0 1 22 15c0 1.65-1.35 3-3 3"/>
-        </svg>
-        <span id="sync-dot" class="sync-dot" aria-hidden="true"></span>
-      </button>
-      <button id="trash" class="icon-btn" aria-label="Trash" title="Trash">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-          <path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/>
-        </svg>
-      </button>
-      <button id="restore" class="icon-btn" aria-label="Restore from backup" title="Restore from backup">
-        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-          <path fill="currentColor" d="M12 5V2L7 6l5 4V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
-        </svg>
-      </button>
-      <button id="backup" class="icon-btn" aria-label="Back up all files" title="Back up all files">
-        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-          <path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z"/>
-        </svg>
-      </button>
-      <button id="add" class="icon-btn" aria-label="Add file">
-        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-          <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/>
-        </svg>
-      </button>
+      <span id="sync-status-wrap" title="Sync status">
+        <span id="sync-status-dot" class="sync-dot off"></span>
+        <span id="sync-status">Local only</span>
+      </span>
+      <button class="icon-btn ro-hide" id="btn-trash" title="Trash">🗑️</button>
+      <button class="icon-btn ro-hide" id="btn-restore" title="Restore from backup">📂</button>
+      <button class="icon-btn ro-hide" id="btn-backup" title="Download backup zip">💾</button>
+      <button class="icon-btn primary ro-hide" id="btn-add" title="Add files">+</button>
     </div>
-  </header>
-
-  <div id="storage-banner" class="storage-banner hidden" role="status">
-    <span class="storage-banner-text">
-      Your files may be cleared by the browser if storage runs low.
-    </span>
-    <button id="storage-banner-action" class="storage-banner-btn">Make permanent</button>
-    <button id="storage-banner-dismiss" class="storage-banner-dismiss" aria-label="Dismiss">×</button>
   </div>
 
-  <main>
-    <div id="grid" class="grid" aria-live="polite"></div>
-    <p id="empty" class="empty hidden">
-      No files yet.<br>
-      Tap <span class="inline-plus" aria-hidden="true">+</span> to add a JPG, PNG, or PDF.
-    </p>
-  </main>
-
-  <input id="picker" type="file" accept="image/jpeg,image/jpg,image/png,application/pdf" multiple hidden>
-  <input id="restore-picker" type="file" accept=".zip,application/zip" hidden>
-
-  <!-- Fullscreen viewer -->
-  <div id="viewer" class="viewer hidden" role="dialog" aria-modal="true" aria-label="File viewer">
-    <button id="viewer-close" class="viewer-btn close" aria-label="Close">
-      <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
-        <path fill="currentColor" d="M18.3 5.71 12 12.01l-6.29-6.3-1.42 1.42L10.59 13.43l-6.3 6.29 1.42 1.42L12 14.84l6.29 6.3 1.42-1.42-6.3-6.29 6.3-6.29z"/>
-      </svg>
-    </button>
-    <button id="viewer-delete" class="viewer-btn delete" aria-label="Delete file">
-      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-        <path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/>
-      </svg>
-    </button>
-    <button id="viewer-rotate-ccw" class="viewer-btn rotate-ccw" aria-label="Rotate left">
-      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-        <path fill="currentColor" d="M7.11 8.53 5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93"/>
-      </svg>
-    </button>
-    <button id="viewer-rotate-cw" class="viewer-btn rotate-cw" aria-label="Rotate right">
-      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-        <path fill="currentColor" d="M15.55 5.55 11 1v3.07C7.06 4.56 4 7.92 4 12s3.05 7.44 7 7.93v-2.02c-2.84-.48-5-2.94-5-5.91s2.16-5.43 5-5.91V10zM19.93 11a7.9 7.9 0 0 0-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03m3.89-2.42 1.42 1.41c.9-1.16 1.45-2.5 1.62-3.89h-2.02c-.14.88-.48 1.72-1.02 2.48"/>
-      </svg>
-    </button>
-    <div id="viewer-body" class="viewer-body"></div>
-    <div id="viewer-name" class="viewer-name"></div>
+  <div class="banner" id="ro-banner">
+    <span>👀 Read-only mode. Your changes won't be saved or synced.</span>
   </div>
 
-  <!-- Lightweight confirm dialog -->
-  <div id="confirm" class="confirm hidden" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
-    <div class="confirm-box">
-      <div id="confirm-msg" class="confirm-msg">Delete this file?</div>
-      <div class="confirm-actions">
-        <button id="confirm-cancel" class="btn">Cancel</button>
-        <button id="confirm-ok" class="btn danger">Delete</button>
+  <div class="banner" id="storage-banner">
+    <span id="storage-banner-msg">Storage warning</span>
+    <span class="spacer"></span>
+    <button id="storage-banner-action">Request</button>
+    <button id="storage-banner-dismiss" title="Dismiss">✕</button>
+  </div>
+
+  <div id="grid" class="grid"></div>
+
+  <div id="empty-state" class="empty-state" hidden>
+    <div class="big">📁</div>
+    <div class="title">No files yet</div>
+    <div>Tap + to add photos or PDFs.</div>
+  </div>
+</div>
+
+<input type="file" id="picker" multiple accept="image/*,application/pdf" hidden />
+<input type="file" id="restore-picker" accept=".zip" hidden />
+
+<dialog id="viewer" class="viewer">
+  <div class="viewer-bar">
+    <button id="viewer-close" title="Close">←</button>
+    <div class="name" id="viewer-name"></div>
+    <button id="viewer-rotate" title="Rotate">↻</button>
+    <button id="viewer-delete" class="danger" title="Move to trash">🗑️</button>
+  </div>
+  <div class="viewer-stage" id="viewer-stage"></div>
+</dialog>
+
+<dialog id="confirm-dialog">
+  <div class="confirm">
+    <h3 id="confirm-title">Confirm</h3>
+    <p id="confirm-msg"></p>
+    <div class="row">
+      <button id="confirm-cancel">Cancel</button>
+      <button id="confirm-ok" class="danger">OK</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="trash-sheet">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2>Trash</h2>
+      <button id="trash-close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div id="trash-empty" class="empty-state" hidden>
+        <div class="big">🗑️</div>
+        <div class="title">Trash is empty</div>
       </div>
+      <div id="trash-list"></div>
+    </div>
+    <div class="sheet-foot">
+      <button id="trash-empty-all" class="danger">Empty trash</button>
     </div>
   </div>
+</dialog>
 
-  <!-- Sync settings sheet -->
-  <div id="sync-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="sync-title">
-    <div class="sheet-box">
-      <header class="sheet-header">
-        <h2 id="sync-title">Sync</h2>
-        <button id="sync-close" class="icon-btn dark" aria-label="Close">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-            <path fill="currentColor" d="M18.3 5.71 12 12.01l-6.29-6.3-1.42 1.42L10.59 13.43l-6.3 6.29 1.42 1.42L12 14.84l6.29 6.3 1.42-1.42-6.3-6.29 6.3-6.29z"/>
-          </svg>
-        </button>
-      </header>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {
+  getStorage, ref as storageRef, uploadBytes, getBlob, deleteObject
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 
-      <div id="sync-status-line" class="sync-status-line">Not configured</div>
+// Firebase project config — paste your values below.
+// These are public web SDK values, safe to commit. Project access is gated
+// by the Firestore + Storage security rules you set in the Firebase console.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBrfHo5gQ_-MsiZfBKJ35vxwKpkLgUuY-A",
+  authDomain: "files-7cfee.firebaseapp.com",
+  projectId: "files-7cfee",
+  storageBucket: "files-7cfee.firebasestorage.app",
+  messagingSenderId: "266662050645",
+  appId: "1:266662050645:web:5f56cbf732a5f080274ddc"
+};
 
-      <!-- Setup step: paste Firebase config -->
-      <section id="sync-setup" class="sync-section">
-        <h3>1. Paste your Firebase config</h3>
-        <p class="muted">
-          Create a free Firebase project at
-          <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">console.firebase.google.com</a>,
-          enable <b>Firestore</b> and <b>Storage</b>,
-          then copy the web app config object and paste it below.
-        </p>
-        <textarea id="sync-config" rows="8" spellcheck="false" placeholder='{
-  "apiKey": "...",
-  "authDomain": "....firebaseapp.com",
-  "projectId": "...",
-  "storageBucket": "....appspot.com",
-  "appId": "..."
-}'></textarea>
-        <details class="sync-rules">
-          <summary>Security rules to paste in Firebase console (required)</summary>
-          <p class="muted">
-            This app uses a long random "vault key" instead of sign-in.
-            The rules below allow read/write to any vault whose key is at least
-            24 characters long — your key is 32 — so guessing one is infeasible.
-            <b>Anyone who learns both your Firebase project + vault key can read your files</b>,
-            so treat the vault key like a password.
-          </p>
-          <p class="muted">Firestore → Rules:</p>
-<pre>rules_version = '2';
-service cloud.firestore {
-  match /databases/{db}/documents {
-    match /vaults/{vault}/{document=**} {
-      allow read, write: if vault.size() &gt;= 24;
+const HOUSEHOLD_ID = "main";
+const FIREBASE_COLLECTION = "fileApps";
+const STORAGE_KEY = "files-app-v1";
+const CLIENT_ID_KEY = "files-app-client-id";
+const PASSCODE = null; // set to a string (e.g. "1234") to enable the lock screen, or null to disable
+
+const IDB_NAME = "files-app-db";
+const IDB_STORE = "blobs";
+const PDFJS_VERSION = "3.11.174";
+
+// Detect a partly-filled config so we can fall back to read-only mode without
+// blowing up on initializeApp.
+const FIREBASE_READY = !Object.values(FIREBASE_CONFIG).some(v => typeof v !== "string" || v.startsWith("PASTE_"));
+
+// State
+let data = { files: [], order: [] };
+let cloudReady = false;
+let cloudTrackerRef = null;
+let firebaseApp = null;
+let firebaseDb = null;
+let firebaseStorage = null;
+let saveQueue = Promise.resolve();
+let unsubscribeRemote = null;
+let applyingRemote = false;
+let readOnly = false;
+const clientId = getClientId();
+
+function getClientId(){
+  let id = localStorage.getItem(CLIENT_ID_KEY);
+  if(id){
+    return id;
+  }
+  id = crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2,10));
+  localStorage.setItem(CLIENT_ID_KEY, id);
+  return id;
+}
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+// localStorage source of truth (metadata only — blobs live in IndexedDB)
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw){
+      return { files: [], order: [] };
+    }
+    const parsed = JSON.parse(raw);
+    return mergeWithDefaults(parsed);
+  }catch(e){
+    console.warn("Failed to load data, resetting", e);
+    return { files: [], order: [] };
+  }
+}
+
+function mergeWithDefaults(parsed){
+  const files = Array.isArray(parsed?.files) ? parsed.files : [];
+  const cleaned = files.map(f => ({
+    id: f.id,
+    name: f.name || "Untitled",
+    type: f.type || "application/octet-stream",
+    addedAt: f.addedAt || Date.now(),
+    updatedAt: f.updatedAt || f.addedAt || Date.now(),
+    deletedAt: f.deletedAt || null,
+    sizeBytes: f.sizeBytes || 0,
+    rotation: f.rotation || 0
+  })).filter(f => f.id);
+  const orderRaw = Array.isArray(parsed?.order) ? parsed.order : [];
+  const fileIds = new Set(cleaned.map(f => f.id));
+  const order = orderRaw.filter(id => fileIds.has(id));
+  cleaned.forEach(f => { if(!order.includes(f.id)) order.push(f.id); });
+  return { files: cleaned, order };
+}
+
+function saveLocal(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function save(){
+  if(readOnly){
+    return;
+  }
+  saveLocal();
+  if(!cloudTrackerRef){
+    return;
+  }
+  const payload = clone(data);
+  saveQueue = saveQueue
+    .then(() => setDoc(cloudTrackerRef, {
+      payload,
+      updatedAt: serverTimestamp(),
+      updatedBy: clientId
+    }, { merge: true }))
+    .catch(err => {
+      console.error("Save to Firestore failed:", err);
+      setSyncDot("error");
+      setSyncStatus("Sync error");
+    });
+}
+
+// IndexedDB for blob storage
+function openDb(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if(!db.objectStoreNames.contains(IDB_STORE)){
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbPutBlob(id, blob){
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(blob, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbGetBlob(id){
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDeleteBlob(id){
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbHasBlob(id){
+  const blob = await dbGetBlob(id);
+  return !!blob;
+}
+
+// Cloud sync
+function setSyncDot(state){
+  const dot = document.getElementById("sync-status-dot");
+  if(dot){
+    dot.className = "sync-dot " + state;
+  }
+}
+
+function setSyncStatus(text){
+  const el = document.getElementById("sync-status");
+  if(el){
+    el.textContent = text;
+  }
+}
+
+async function connectCloudSync(){
+  if(!FIREBASE_READY){
+    setSyncDot("off");
+    setSyncStatus("Local only");
+    return;
+  }
+  setSyncDot("connecting");
+  setSyncStatus("Connecting…");
+  try{
+    firebaseApp = initializeApp(FIREBASE_CONFIG);
+    firebaseDb = getFirestore(firebaseApp);
+    firebaseStorage = getStorage(firebaseApp);
+
+    const pendingRef = doc(firebaseDb, FIREBASE_COLLECTION, HOUSEHOLD_ID);
+    const snap = await getDoc(pendingRef);
+    if(snap.exists()){
+      const remotePayload = snap.data()?.payload;
+      if(remotePayload && typeof remotePayload === "object"){
+        applyingRemote = true;
+        data = mergeWithDefaults(remotePayload);
+        applyingRemote = false;
+        saveLocal();
+        await reconcileBlobs();
+        render();
+      }
+      cloudTrackerRef = pendingRef;
+    }else{
+      await setDoc(pendingRef, {
+        payload: clone(data),
+        updatedAt: serverTimestamp(),
+        updatedBy: clientId
+      });
+      cloudTrackerRef = pendingRef;
+      await uploadLocalBlobsOnFirstSync();
+    }
+
+    cloudReady = true;
+    setSyncDot("connected");
+    setSyncStatus("Synced");
+
+    unsubscribeRemote = onSnapshot(
+      cloudTrackerRef,
+      docSnap => {
+        if(!docSnap.exists()){
+          return;
+        }
+        const d = docSnap.data();
+        if(d?.updatedBy === clientId){
+          setSyncDot("connected");
+          setSyncStatus("Synced");
+          return;
+        }
+        if(d?.payload && typeof d.payload === "object"){
+          applyingRemote = true;
+          data = mergeWithDefaults(d.payload);
+          applyingRemote = false;
+          saveLocal();
+          reconcileBlobs().then(render);
+        }
+      },
+      err => {
+        console.error("Realtime sync failed:", err);
+        setSyncDot("error");
+        setSyncStatus("Sync error");
+      }
+    );
+  }catch(err){
+    console.error("Cloud sync init failed:", err);
+    setSyncDot("error");
+    setSyncStatus("Sync failed");
+  }
+}
+
+function blobPathFor(id){
+  return `${FIREBASE_COLLECTION}/${HOUSEHOLD_ID}/${id}`;
+}
+
+async function uploadBlobToCloud(id, blob){
+  if(!firebaseStorage){
+    return;
+  }
+  const r = storageRef(firebaseStorage, blobPathFor(id));
+  await uploadBytes(r, blob, { contentType: blob.type || "application/octet-stream" });
+}
+
+async function downloadBlobFromCloud(id){
+  if(!firebaseStorage){
+    return null;
+  }
+  const r = storageRef(firebaseStorage, blobPathFor(id));
+  return await getBlob(r);
+}
+
+async function deleteBlobFromCloud(id){
+  if(!firebaseStorage){
+    return;
+  }
+  try{
+    const r = storageRef(firebaseStorage, blobPathFor(id));
+    await deleteObject(r);
+  }catch(err){
+    if(err?.code !== "storage/object-not-found"){
+      console.warn("Cloud delete failed:", err);
     }
   }
-}</pre>
-          <p class="muted">Storage → Rules:</p>
-<pre>rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /vaults/{vault}/{allPaths=**} {
-      allow read, write: if vault.size() &gt;= 24;
+}
+
+async function uploadLocalBlobsOnFirstSync(){
+  for(const f of data.files){
+    if(f.deletedAt){
+      continue;
+    }
+    try{
+      const blob = await dbGetBlob(f.id);
+      if(blob){
+        await uploadBlobToCloud(f.id, blob);
+      }
+    }catch(err){
+      console.warn("Initial upload failed for", f.id, err);
     }
   }
-}</pre>
-        </details>
-        <div class="sync-actions">
-          <button id="sync-save-config" class="btn primary">Save config</button>
-        </div>
-      </section>
+}
 
-      <!-- Vault key step -->
-      <section id="sync-auth" class="sync-section hidden">
-        <h3>2. Vault key</h3>
-        <p class="muted">
-          A random secret that ties your devices together. The app generated one
-          for you — copy it now and paste it into the other device's settings.
-        </p>
-        <label class="field">
-          <span>Vault key</span>
-          <input id="sync-vault-key" type="text" spellcheck="false" autocapitalize="off" autocomplete="off">
-        </label>
-        <div class="sync-actions">
-          <button id="sync-vault-copy" class="btn">Copy</button>
-          <button id="sync-vault-regen" class="btn">Generate new</button>
-          <button id="sync-vault-save" class="btn primary">Use this key</button>
-        </div>
-        <div id="sync-auth-error" class="sync-error hidden"></div>
-        <div class="sync-actions sync-actions-secondary">
-          <button id="sync-clear-config" class="btn link">Use a different Firebase project</button>
-        </div>
-      </section>
-
-      <!-- Linked state -->
-      <section id="sync-active" class="sync-section hidden">
-        <h3>Linked</h3>
-        <p class="muted">This device is syncing with your vault.</p>
-        <label class="field">
-          <span>Current vault key</span>
-          <input id="sync-active-key" type="text" readonly spellcheck="false">
-        </label>
-        <div class="sync-actions">
-          <button id="sync-active-copy" class="btn">Copy key</button>
-          <button id="sync-signout" class="btn">Unlink this device</button>
-        </div>
-        <div class="sync-actions sync-actions-secondary">
-          <button id="sync-clear-config-2" class="btn link">Use a different Firebase project</button>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <!-- Trash sheet -->
-  <div id="trash-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="trash-title">
-    <div class="sheet-box">
-      <header class="sheet-header">
-        <h2 id="trash-title">Trash</h2>
-        <button id="trash-close" class="icon-btn dark" aria-label="Close">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-            <path fill="currentColor" d="M18.3 5.71 12 12.01l-6.29-6.3-1.42 1.42L10.59 13.43l-6.3 6.29 1.42 1.42L12 14.84l6.29 6.3 1.42-1.42-6.3-6.29 6.3-6.29z"/>
-          </svg>
-        </button>
-      </header>
-      <p class="muted trash-note">Deleted files are kept here. Restore to bring them back, or empty trash to delete permanently from every device.</p>
-      <div class="trash-actions">
-        <button id="trash-empty" class="btn danger">Empty trash</button>
-      </div>
-      <div id="trash-list" class="trash-list"></div>
-      <p id="trash-empty-msg" class="empty hidden">Trash is empty.</p>
-    </div>
-  </div>
-
-  <script type="module" src="app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+const fetchingBlobs = new Map();
+async function ensureBlobLocal(id){
+  const existing = await dbGetBlob(id);
+  if(existing){
+    return existing;
+  }
+  if(!firebaseStorage){
+    return null;
+  }
+  if(fetchingBlobs.has(id)){
+    return fetchingBlobs.get(id);
+  }
+  const p = (async () => {
+    try{
+      const blob = await downloadBlobFromCloud(id);
+      if(blob){
+        await dbPutBlob(id, blob);
+      }
+      return blob;
+    }catch(err){
+      console.warn("Cloud fetch failed for", id, err);
+      return null;
+    }finally{
+      fetchingBlobs.delete(id);
     }
-  </script>
+  })();
+  fetchingBlobs.set(id, p);
+  return p;
+}
+
+async function reconcileBlobs(){
+  // Trigger background downloads for any visible files we don't have locally.
+  // We don't await — render() will show placeholders and refresh as they arrive.
+  const visible = data.files.filter(f => !f.deletedAt);
+  for(const f of visible){
+    const has = await dbHasBlob(f.id);
+    if(!has){
+      ensureBlobLocal(f.id).then(() => renderTileFor(f.id));
+    }
+  }
+}
+
+// Rendering
+const $grid = document.getElementById("grid");
+const $emptyState = document.getElementById("empty-state");
+
+function visibleFiles(){
+  return data.order
+    .map(id => data.files.find(f => f.id === id))
+    .filter(f => f && !f.deletedAt);
+}
+
+function render(){
+  const list = visibleFiles();
+  $grid.innerHTML = "";
+  if(list.length === 0){
+    $emptyState.hidden = false;
+    return;
+  }
+  $emptyState.hidden = true;
+  for(const f of list){
+    $grid.appendChild(buildTile(f));
+  }
+}
+
+function buildTile(f){
+  const el = document.createElement("div");
+  el.className = "tile";
+  el.dataset.id = f.id;
+  el.draggable = true;
+  el.innerHTML = `
+    <div class="thumb" data-thumb></div>
+    <div class="badge">${f.type.startsWith("image/") ? "IMG" : "PDF"}</div>
+    <div class="sync-mini synced" data-sync-mini></div>
+    <div class="label">${escapeHtml(f.name)}</div>
+  `;
+  el.addEventListener("click", e => {
+    if(el.classList.contains("dragging")){
+      return;
+    }
+    openViewer(f.id);
+  });
+  attachDrag(el);
+  renderThumbInto(el.querySelector("[data-thumb]"), f);
+  return el;
+}
+
+function renderTileFor(id){
+  const tile = $grid.querySelector(`.tile[data-id="${id}"]`);
+  if(!tile){
+    return;
+  }
+  const f = data.files.find(x => x.id === id);
+  if(!f){
+    return;
+  }
+  renderThumbInto(tile.querySelector("[data-thumb]"), f);
+}
+
+async function renderThumbInto(node, f){
+  node.innerHTML = "";
+  const blob = await dbGetBlob(f.id);
+  if(!blob){
+    const ph = document.createElement("div");
+    ph.className = "placeholder";
+    ph.innerHTML = `<div class="ic">${f.type.startsWith("image/") ? "🖼️" : "📄"}</div><div>Syncing…</div>`;
+    node.appendChild(ph);
+    return;
+  }
+  if(f.type.startsWith("image/")){
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(blob);
+    img.style.transform = `rotate(${f.rotation || 0}deg)`;
+    img.onload = () => URL.revokeObjectURL(img.src);
+    node.appendChild(img);
+    return;
+  }
+  if(f.type === "application/pdf"){
+    renderPdfThumb(node, blob);
+    return;
+  }
+  const ph = document.createElement("div");
+  ph.className = "placeholder";
+  ph.innerHTML = `<div class="ic">📎</div><div>${escapeHtml(f.name)}</div>`;
+  node.appendChild(ph);
+}
+
+let pdfjsLib = null;
+async function getPdfJs(){
+  if(pdfjsLib){
+    return pdfjsLib;
+  }
+  pdfjsLib = await import(`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.mjs`);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.mjs`;
+  return pdfjsLib;
+}
+
+async function renderPdfThumb(node, blob){
+  try{
+    const pdfjs = await getPdfJs();
+    const ab = await blob.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: ab }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    const canvas = document.createElement("canvas");
+    const target = 300;
+    const scale = target / viewport.width;
+    const scaled = page.getViewport({ scale });
+    canvas.width = scaled.width;
+    canvas.height = scaled.height;
+    await page.render({ canvasContext: canvas.getContext("2d"), viewport: scaled }).promise;
+    node.innerHTML = "";
+    node.appendChild(canvas);
+  }catch(err){
+    console.warn("PDF thumb render failed:", err);
+    node.innerHTML = `<div class="placeholder"><div class="ic">📄</div><div>PDF</div></div>`;
+  }
+}
+
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[c]));
+}
+
+// Drag-reorder
+let dragId = null;
+function attachDrag(el){
+  el.addEventListener("dragstart", e => {
+    if(readOnly){
+      e.preventDefault();
+      return;
+    }
+    dragId = el.dataset.id;
+    el.classList.add("dragging");
+    try{ e.dataTransfer.setData("text/plain", dragId); }catch{}
+    e.dataTransfer.effectAllowed = "move";
+  });
+  el.addEventListener("dragend", () => {
+    el.classList.remove("dragging");
+    $grid.querySelectorAll(".tile.drag-over").forEach(t => t.classList.remove("drag-over"));
+    dragId = null;
+  });
+  el.addEventListener("dragover", e => {
+    if(!dragId || dragId === el.dataset.id){
+      return;
+    }
+    e.preventDefault();
+    el.classList.add("drag-over");
+  });
+  el.addEventListener("dragleave", () => el.classList.remove("drag-over"));
+  el.addEventListener("drop", e => {
+    e.preventDefault();
+    el.classList.remove("drag-over");
+    if(!dragId || dragId === el.dataset.id){
+      return;
+    }
+    const fromIdx = data.order.indexOf(dragId);
+    const toIdx = data.order.indexOf(el.dataset.id);
+    if(fromIdx < 0 || toIdx < 0){
+      return;
+    }
+    data.order.splice(fromIdx, 1);
+    data.order.splice(toIdx, 0, dragId);
+    save();
+    render();
+  });
+}
+
+// Viewer
+const $viewer = document.getElementById("viewer");
+const $viewerName = document.getElementById("viewer-name");
+const $viewerStage = document.getElementById("viewer-stage");
+let currentViewerId = null;
+
+async function openViewer(id){
+  const f = data.files.find(x => x.id === id);
+  if(!f){
+    return;
+  }
+  currentViewerId = id;
+  $viewerName.textContent = f.name;
+  $viewerStage.innerHTML = `<div style="color:#aaa;">Loading…</div>`;
+  if(!$viewer.open){
+    $viewer.showModal();
+  }
+  const blob = await ensureBlobLocal(id);
+  if(!blob){
+    $viewerStage.innerHTML = `<div style="color:#aaa;">Could not load file.</div>`;
+    return;
+  }
+  $viewerStage.innerHTML = "";
+  if(f.type.startsWith("image/")){
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(blob);
+    img.style.transform = `rotate(${f.rotation || 0}deg)`;
+    img.dataset.rotation = String(f.rotation || 0);
+    $viewerStage.appendChild(img);
+  }else if(f.type === "application/pdf"){
+    const iframe = document.createElement("iframe");
+    iframe.src = URL.createObjectURL(blob);
+    $viewerStage.appendChild(iframe);
+  }else{
+    $viewerStage.innerHTML = `<div style="color:#aaa;">Cannot preview this file type.</div>`;
+  }
+}
+
+document.getElementById("viewer-close").addEventListener("click", () => {
+  $viewer.close();
+  $viewerStage.innerHTML = "";
+  currentViewerId = null;
+});
+
+document.getElementById("viewer-rotate").addEventListener("click", () => {
+  if(readOnly || !currentViewerId){
+    return;
+  }
+  const f = data.files.find(x => x.id === currentViewerId);
+  if(!f || !f.type.startsWith("image/")){
+    return;
+  }
+  f.rotation = ((f.rotation || 0) + 90) % 360;
+  f.updatedAt = Date.now();
+  const img = $viewerStage.querySelector("img");
+  if(img){
+    img.style.transform = `rotate(${f.rotation}deg)`;
+  }
+  save();
+  renderTileFor(f.id);
+});
+
+document.getElementById("viewer-delete").addEventListener("click", async () => {
+  if(readOnly || !currentViewerId){
+    return;
+  }
+  const ok = await confirmDialog("Move to trash?", "You can restore it from the Trash button.");
+  if(!ok){
+    return;
+  }
+  const f = data.files.find(x => x.id === currentViewerId);
+  if(f){
+    f.deletedAt = Date.now();
+    f.updatedAt = Date.now();
+    save();
+    render();
+  }
+  $viewer.close();
+  $viewerStage.innerHTML = "";
+  currentViewerId = null;
+});
+
+// Add files
+const $picker = document.getElementById("picker");
+document.getElementById("btn-add").addEventListener("click", () => $picker.click());
+$picker.addEventListener("change", async () => {
+  if(readOnly){
+    return;
+  }
+  const files = Array.from($picker.files || []);
+  $picker.value = "";
+  for(const file of files){
+    const id = uid();
+    const rec = {
+      id,
+      name: file.name,
+      type: file.type || "application/octet-stream",
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+      deletedAt: null,
+      sizeBytes: file.size,
+      rotation: 0
+    };
+    try{
+      await dbPutBlob(id, file);
+    }catch(err){
+      console.error("Failed to store blob locally:", err);
+      alert("Could not save file (storage full?). " + (err?.message || err));
+      continue;
+    }
+    data.files.push(rec);
+    data.order.unshift(id);
+    saveLocal();
+    render();
+    if(firebaseStorage){
+      uploadBlobToCloud(id, file)
+        .then(() => save())
+        .catch(err => {
+          console.warn("Cloud upload failed for", id, err);
+          save();
+        });
+    }else{
+      save();
+    }
+  }
+  checkStorage();
+});
+
+// Trash
+const $trashSheet = document.getElementById("trash-sheet");
+const $trashList = document.getElementById("trash-list");
+const $trashEmpty = document.getElementById("trash-empty");
+
+document.getElementById("btn-trash").addEventListener("click", () => {
+  renderTrash();
+  $trashSheet.showModal();
+});
+document.getElementById("trash-close").addEventListener("click", () => $trashSheet.close());
+
+function trashedFiles(){
+  return data.files.filter(f => f.deletedAt).sort((a, b) => b.deletedAt - a.deletedAt);
+}
+
+function renderTrash(){
+  const list = trashedFiles();
+  $trashList.innerHTML = "";
+  if(list.length === 0){
+    $trashEmpty.hidden = false;
+    return;
+  }
+  $trashEmpty.hidden = true;
+  for(const f of list){
+    const row = document.createElement("div");
+    row.className = "trash-row";
+    row.innerHTML = `
+      <div class="thumb-mini" data-thumb>${f.type.startsWith("image/") ? "🖼️" : "📄"}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(f.name)}</div>
+        <div class="meta">${new Date(f.deletedAt).toLocaleString()}</div>
+      </div>
+      <div class="actions">
+        <button data-restore>Restore</button>
+        <button class="danger" data-purge>Delete</button>
+      </div>
+    `;
+    row.querySelector("[data-restore]").addEventListener("click", () => restoreFile(f.id));
+    row.querySelector("[data-purge]").addEventListener("click", () => purgeFile(f.id));
+    dbGetBlob(f.id).then(blob => {
+      if(blob && f.type.startsWith("image/")){
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(blob);
+        const tn = row.querySelector("[data-thumb]");
+        tn.innerHTML = "";
+        tn.appendChild(img);
+      }
+    });
+    $trashList.appendChild(row);
+  }
+}
+
+function restoreFile(id){
+  const f = data.files.find(x => x.id === id);
+  if(!f){
+    return;
+  }
+  f.deletedAt = null;
+  f.updatedAt = Date.now();
+  if(!data.order.includes(f.id)){
+    data.order.unshift(f.id);
+  }
+  save();
+  render();
+  renderTrash();
+}
+
+async function purgeFile(id){
+  const ok = await confirmDialog("Delete permanently?", "This file will be removed from this device and from the cloud.");
+  if(!ok){
+    return;
+  }
+  data.files = data.files.filter(f => f.id !== id);
+  data.order = data.order.filter(x => x !== id);
+  await dbDeleteBlob(id).catch(() => {});
+  await deleteBlobFromCloud(id).catch(() => {});
+  save();
+  render();
+  renderTrash();
+}
+
+document.getElementById("trash-empty-all").addEventListener("click", async () => {
+  const list = trashedFiles();
+  if(list.length === 0){
+    return;
+  }
+  const ok = await confirmDialog("Empty trash?", `Permanently delete ${list.length} file${list.length === 1 ? "" : "s"}?`);
+  if(!ok){
+    return;
+  }
+  for(const f of list){
+    await dbDeleteBlob(f.id).catch(() => {});
+    await deleteBlobFromCloud(f.id).catch(() => {});
+  }
+  const ids = new Set(list.map(f => f.id));
+  data.files = data.files.filter(f => !ids.has(f.id));
+  data.order = data.order.filter(id => !ids.has(id));
+  save();
+  render();
+  renderTrash();
+});
+
+// Backup/restore (zip)
+const JSZIP_URL = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+let jszipLoaded = false;
+function loadJSZip(){
+  if(jszipLoaded){
+    return Promise.resolve(window.JSZip);
+  }
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = JSZIP_URL;
+    s.onload = () => { jszipLoaded = true; resolve(window.JSZip); };
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+document.getElementById("btn-backup").addEventListener("click", async () => {
+  try{
+    const JSZip = await loadJSZip();
+    const zip = new JSZip();
+    zip.file("manifest.json", JSON.stringify(data, null, 2));
+    const blobsFolder = zip.folder("blobs");
+    for(const f of data.files){
+      const blob = await dbGetBlob(f.id);
+      if(blob){
+        blobsFolder.file(f.id, blob);
+      }
+    }
+    const out = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(out);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `files-backup-${new Date().toISOString().slice(0,10)}.zip`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }catch(err){
+    alert("Backup failed: " + (err?.message || err));
+  }
+});
+
+const $restorePicker = document.getElementById("restore-picker");
+document.getElementById("btn-restore").addEventListener("click", () => $restorePicker.click());
+$restorePicker.addEventListener("change", async () => {
+  const file = $restorePicker.files?.[0];
+  $restorePicker.value = "";
+  if(!file){
+    return;
+  }
+  const ok = await confirmDialog("Restore from backup?", "Existing files on this device will be merged with the backup. Cloud sync (if enabled) will catch up afterward.");
+  if(!ok){
+    return;
+  }
+  try{
+    const JSZip = await loadJSZip();
+    const zip = await JSZip.loadAsync(file);
+    const manifestFile = zip.file("manifest.json");
+    if(!manifestFile){
+      throw new Error("manifest.json missing from zip");
+    }
+    const manifest = JSON.parse(await manifestFile.async("string"));
+    const restored = mergeWithDefaults(manifest);
+    const existingIds = new Set(data.files.map(f => f.id));
+    for(const f of restored.files){
+      if(existingIds.has(f.id)){
+        continue;
+      }
+      const entry = zip.file(`blobs/${f.id}`);
+      if(entry){
+        const blob = await entry.async("blob");
+        const typed = new Blob([blob], { type: f.type });
+        await dbPutBlob(f.id, typed);
+        if(firebaseStorage){
+          uploadBlobToCloud(f.id, typed).catch(err => console.warn("Restore upload failed:", err));
+        }
+      }
+      data.files.push(f);
+      if(!data.order.includes(f.id)){
+        data.order.push(f.id);
+      }
+    }
+    save();
+    render();
+  }catch(err){
+    alert("Restore failed: " + (err?.message || err));
+  }
+});
+
+// Confirm dialog
+const $confirm = document.getElementById("confirm-dialog");
+const $confirmTitle = document.getElementById("confirm-title");
+const $confirmMsg = document.getElementById("confirm-msg");
+const $confirmOk = document.getElementById("confirm-ok");
+const $confirmCancel = document.getElementById("confirm-cancel");
+function confirmDialog(title, message){
+  $confirmTitle.textContent = title;
+  $confirmMsg.textContent = message;
+  $confirm.showModal();
+  return new Promise(resolve => {
+    const onOk = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    function cleanup(){
+      $confirmOk.removeEventListener("click", onOk);
+      $confirmCancel.removeEventListener("click", onCancel);
+      $confirm.close();
+    }
+    $confirmOk.addEventListener("click", onOk);
+    $confirmCancel.addEventListener("click", onCancel);
+  });
+}
+
+// Persistent storage + quota warning
+const $storageBanner = document.getElementById("storage-banner");
+const $storageBannerMsg = document.getElementById("storage-banner-msg");
+const $storageBannerAction = document.getElementById("storage-banner-action");
+const $storageBannerDismiss = document.getElementById("storage-banner-dismiss");
+
+async function checkStorage(){
+  if(!navigator.storage){
+    return;
+  }
+  const persisted = await navigator.storage.persisted?.();
+  if(persisted === false){
+    $storageBannerMsg.textContent = "Browser may evict your files. Tap to make storage persistent.";
+    $storageBannerAction.textContent = "Make persistent";
+    $storageBannerAction.style.display = "";
+    $storageBanner.classList.add("show");
+    return;
+  }
+  const est = await navigator.storage.estimate?.();
+  if(est && est.quota){
+    const pct = (est.usage / est.quota) * 100;
+    if(pct > 80){
+      $storageBannerMsg.textContent = `Storage ${pct.toFixed(0)}% full.`;
+      $storageBannerAction.style.display = "none";
+      $storageBanner.classList.add("show");
+      return;
+    }
+  }
+  $storageBanner.classList.remove("show");
+}
+
+$storageBannerAction.addEventListener("click", async () => {
+  if(navigator.storage?.persist){
+    const granted = await navigator.storage.persist();
+    if(granted){
+      $storageBanner.classList.remove("show");
+    }else{
+      $storageBannerMsg.textContent = "Browser denied persistent storage. Try installing the app.";
+      $storageBannerAction.style.display = "none";
+    }
+  }
+});
+$storageBannerDismiss.addEventListener("click", () => $storageBanner.classList.remove("show"));
+
+// Lock screen
+const $lockScreen = document.getElementById("lock-screen");
+const $lockInput = document.getElementById("lock-input");
+const $lockErr = document.getElementById("lock-err");
+const UNLOCK_KEY = "files-app-unlocked";
+
+function showLockScreen(){
+  $lockScreen.hidden = false;
+  setTimeout(() => $lockInput.focus(), 100);
+}
+
+function hideLockScreen(){
+  $lockScreen.hidden = true;
+}
+
+document.getElementById("lock-unlock").addEventListener("click", attemptUnlock);
+$lockInput.addEventListener("keydown", e => {
+  if(e.key === "Enter"){
+    attemptUnlock();
+  }
+});
+document.getElementById("lock-readonly").addEventListener("click", () => {
+  readOnly = true;
+  document.body.classList.add("ro-mode");
+  document.getElementById("ro-banner").classList.add("show");
+  hideLockScreen();
+  startApp();
+});
+
+function attemptUnlock(){
+  if($lockInput.value === PASSCODE){
+    sessionStorage.setItem(UNLOCK_KEY, "1");
+    hideLockScreen();
+    startApp();
+  }else{
+    $lockErr.textContent = "Wrong passcode";
+    $lockInput.select();
+  }
+}
+
+// Boot
+async function startApp(){
+  data = load();
+  render();
+  await checkStorage();
+  if(!readOnly){
+    connectCloudSync();
+  }
+}
+
+function init(){
+  if(PASSCODE && sessionStorage.getItem(UNLOCK_KEY) !== "1"){
+    showLockScreen();
+  }else{
+    startApp();
+  }
+}
+
+init();
+
+// Service worker
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(err => console.warn("SW register failed:", err));
+  });
+}
+</script>
 </body>
 </html>
