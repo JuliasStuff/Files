@@ -221,6 +221,8 @@
   .viewer{
     position:fixed; inset:0;
     width:100%; height:100%; margin:0;
+    max-width:none; max-height:none;   /* override UA dialog size constraints */
+    border:none; padding:0; overflow:hidden;
     background:#1a1814;
     display:flex; flex-direction:column;
   }
@@ -245,12 +247,12 @@
     flex:1; display:flex; align-items:center; justify-content:center;
     overflow:auto; padding:14px;
   }
-  .viewer-stage img,
-  .viewer-stage iframe{
-    max-width:100%; max-height:100%;
+  .viewer-stage img{
+    display:block;
     background:#fff; border-radius:6px;
     box-shadow:0 10px 40px rgba(0,0,0,.4);
-    transition:transform .2s;
+    transform-origin:center center;
+    transition:transform .2s, width .2s, height .2s;
   }
   .viewer-stage iframe{
     width:100%; height:100%; border:none;
@@ -969,15 +971,23 @@ async function openViewer(id){
   }
   const blob = await ensureBlobLocal(id);
   if(!blob){
-    $viewerStage.innerHTML = `<div style="color:#aaa;">Could not load file.</div>`;
+    const retryBtn = document.createElement("button");
+    retryBtn.textContent = "Retry";
+    retryBtn.style.cssText = "margin-top:12px;";
+    retryBtn.addEventListener("click", () => openViewer(id));
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "color:#aaa; display:flex; flex-direction:column; align-items:center;";
+    wrap.append("Could not load file.", retryBtn);
+    $viewerStage.innerHTML = "";
+    $viewerStage.appendChild(wrap);
     return;
   }
   $viewerStage.innerHTML = "";
   if(f.type.startsWith("image/")){
     const img = document.createElement("img");
     img.src = URL.createObjectURL(blob);
-    img.style.transform = `rotate(${f.rotation || 0}deg)`;
     img.dataset.rotation = String(f.rotation || 0);
+    img.addEventListener("load", () => fitViewerImage(img, f.rotation || 0));
     $viewerStage.appendChild(img);
   }else if(f.type === "application/pdf"){
     const iframe = document.createElement("iframe");
@@ -1006,10 +1016,43 @@ document.getElementById("viewer-rotate").addEventListener("click", () => {
   f.updatedAt = Date.now();
   const img = $viewerStage.querySelector("img");
   if(img){
-    img.style.transform = `rotate(${f.rotation}deg)`;
+    fitViewerImage(img, f.rotation);
   }
   save();
   renderTileFor(f.id);
+});
+
+function fitViewerImage(img, rotation){
+  if(!img.naturalWidth || !img.naturalHeight){
+    return;
+  }
+  const stage = $viewerStage;
+  const cs = getComputedStyle(stage);
+  const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  const sw = stage.clientWidth - padX;
+  const sh = stage.clientHeight - padY;
+  const iw = img.naturalWidth;
+  const ih = img.naturalHeight;
+  const rotated = rotation === 90 || rotation === 270;
+  const ew = rotated ? ih : iw;
+  const eh = rotated ? iw : ih;
+  const scale = Math.min(sw / ew, sh / eh);
+  img.style.width = (iw * scale) + "px";
+  img.style.height = (ih * scale) + "px";
+  img.style.transform = `rotate(${rotation}deg)`;
+  img.dataset.rotation = String(rotation);
+}
+
+window.addEventListener("resize", () => {
+  if(!$viewer.open || !currentViewerId){
+    return;
+  }
+  const f = data.files.find(x => x.id === currentViewerId);
+  const img = $viewerStage.querySelector("img");
+  if(f && img){
+    fitViewerImage(img, f.rotation || 0);
+  }
 });
 
 document.getElementById("viewer-delete").addEventListener("click", async () => {
