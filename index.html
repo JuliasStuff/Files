@@ -366,7 +366,6 @@
       </span>
       <button class="icon-btn ro-hide" id="btn-trash" title="Trash">🗑️</button>
       <button class="icon-btn ro-hide" id="btn-restore" title="Restore from backup">📂</button>
-      <button class="icon-btn ro-hide" id="btn-backup" title="Download backup zip">💾</button>
       <button class="icon-btn primary ro-hide" id="btn-add" title="Add files">+</button>
     </div>
   </div>
@@ -1238,30 +1237,6 @@ function loadJSZip(){
     document.head.appendChild(s);
   });
 }
-
-document.getElementById("btn-backup").addEventListener("click", async () => {
-  try{
-    const JSZip = await loadJSZip();
-    const zip = new JSZip();
-    zip.file("manifest.json", JSON.stringify(data, null, 2));
-    const blobsFolder = zip.folder("blobs");
-    for(const f of data.files){
-      const blob = await dbGetBlob(f.id);
-      if(blob){
-        blobsFolder.file(f.id, blob);
-      }
-    }
-    const out = await zip.generateAsync({ type: "blob" });
-    const url = URL.createObjectURL(out);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `files-backup-${new Date().toISOString().slice(0,10)}.zip`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }catch(err){
-    alert("Backup failed: " + (err?.message || err));
-  }
-});
 
 const $restorePicker = document.getElementById("restore-picker");
 document.getElementById("btn-restore").addEventListener("click", () => $restorePicker.click());
