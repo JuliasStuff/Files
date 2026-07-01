@@ -365,7 +365,6 @@
         <span id="sync-status">Local only</span>
       </span>
       <button class="icon-btn ro-hide" id="btn-trash" title="Trash">🗑️</button>
-      <button class="icon-btn ro-hide" id="btn-restore" title="Restore from backup">📂</button>
       <button class="icon-btn primary ro-hide" id="btn-add" title="Add files">+</button>
     </div>
   </div>
@@ -391,7 +390,6 @@
 </div>
 
 <input type="file" id="picker" multiple accept="image/*,application/pdf" hidden />
-<input type="file" id="restore-picker" accept=".zip" hidden />
 
 <dialog id="viewer" class="viewer">
   <div class="viewer-bar">
@@ -1222,68 +1220,7 @@ document.getElementById("trash-empty-all").addEventListener("click", async () =>
   renderTrash();
 });
 
-// Backup/restore (zip)
-const JSZIP_URL = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
-let jszipLoaded = false;
-function loadJSZip(){
-  if(jszipLoaded){
-    return Promise.resolve(window.JSZip);
-  }
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = JSZIP_URL;
-    s.onload = () => { jszipLoaded = true; resolve(window.JSZip); };
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
 
-const $restorePicker = document.getElementById("restore-picker");
-document.getElementById("btn-restore").addEventListener("click", () => $restorePicker.click());
-$restorePicker.addEventListener("change", async () => {
-  const file = $restorePicker.files?.[0];
-  $restorePicker.value = "";
-  if(!file){
-    return;
-  }
-  const ok = await confirmDialog("Restore from backup?", "Existing files on this device will be merged with the backup. Cloud sync (if enabled) will catch up afterward.");
-  if(!ok){
-    return;
-  }
-  try{
-    const JSZip = await loadJSZip();
-    const zip = await JSZip.loadAsync(file);
-    const manifestFile = zip.file("manifest.json");
-    if(!manifestFile){
-      throw new Error("manifest.json missing from zip");
-    }
-    const manifest = JSON.parse(await manifestFile.async("string"));
-    const restored = mergeWithDefaults(manifest);
-    const existingIds = new Set(data.files.map(f => f.id));
-    for(const f of restored.files){
-      if(existingIds.has(f.id)){
-        continue;
-      }
-      const entry = zip.file(`blobs/${f.id}`);
-      if(entry){
-        const blob = await entry.async("blob");
-        const typed = new Blob([blob], { type: f.type });
-        await dbPutBlob(f.id, typed);
-        if(firebaseStorage){
-          uploadBlobToCloud(f.id, typed).catch(err => console.warn("Restore upload failed:", err));
-        }
-      }
-      data.files.push(f);
-      if(!data.order.includes(f.id)){
-        data.order.push(f.id);
-      }
-    }
-    save();
-    render();
-  }catch(err){
-    alert("Restore failed: " + (err?.message || err));
-  }
-});
 
 // Confirm dialog
 const $confirm = document.getElementById("confirm-dialog");
